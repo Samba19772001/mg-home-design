@@ -31,19 +31,45 @@ document.getElementById("year").textContent = new Date().getFullYear();
 
 // =========================================
 // CONTRÔLE DU SON DES VIDÉOS
+// Une seule vidéo sonore à la fois
 // =========================================
 
 document.querySelectorAll(".sound-toggle").forEach(button => {
-
   button.addEventListener("click", () => {
-
-    const video = button.closest(".video-placeholder, .about-media")
+    const video = button
+      .closest(".video-placeholder, .about-media, .reel-media")
       ?.querySelector(".site-video");
 
     if (!video) return;
 
-    video.muted = !video.muted;
+    // Si on active le son, couper celui des autres vidéos
+    if (video.muted) {
+      document.querySelectorAll(".site-video").forEach(otherVideo => {
+        if (otherVideo !== video) {
+          otherVideo.muted = true;
 
+          const otherButton = otherVideo
+            .closest(".video-placeholder, .about-media, .reel-media")
+            ?.querySelector(".sound-toggle");
+
+          if (otherButton) {
+            const otherIcon = otherButton.querySelector(".sound-icon");
+            const otherText = otherButton.querySelector(".sound-text");
+
+            if (otherIcon) otherIcon.textContent = "🔇";
+            if (otherText) otherText.textContent = "Activer le son";
+
+            otherButton.setAttribute("aria-label", "Activer le son");
+          }
+        }
+      });
+
+      video.muted = false;
+    } else {
+      video.muted = true;
+    }
+
+    // Actualiser le bouton de la vidéo sélectionnée
     const icon = button.querySelector(".sound-icon");
     const text = button.querySelector(".sound-text");
 
@@ -57,33 +83,31 @@ document.querySelectorAll(".sound-toggle").forEach(button => {
       button.setAttribute("aria-label", "Couper le son");
     }
   });
-
 });
 
 
 // =========================================
-// GALERIE VIDÉO : lecture uniquement quand visible
-// (évite que 6 vidéos tournent en même temps hors écran,
-// ce qui pèse sur la batterie et la connexion mobile)
+// VIDÉOS : lecture uniquement quand visibles
 // =========================================
 
-const galleryVideos = document.querySelectorAll(".gallery-video");
+const lazyVideos = document.querySelectorAll(".gallery-video, .site-video");
 
-if (galleryVideos.length) {
-  const galleryObserver = new IntersectionObserver((entries) => {
+if (lazyVideos.length) {
+  const videoObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       const video = entry.target;
       if (entry.isIntersecting) {
-        video.play().catch(() => { /* autoplay bloqué : l'utilisateur peut cliquer */ });
+        video.play().catch(() => { /* lecture bloquée : le visiteur peut cliquer */ });
       } else {
         video.pause();
       }
     });
   }, { threshold: 0.35 });
 
-  galleryVideos.forEach(video => {
-    galleryObserver.observe(video);
-    // Un clic/tap permet de relancer la lecture si le navigateur l'a bloquée
+  lazyVideos.forEach(video => videoObserver.observe(video));
+
+  // Clic pour lecture/pause sur la galerie uniquement
+  document.querySelectorAll(".gallery-video").forEach(video => {
     video.addEventListener("click", () => {
       if (video.paused) video.play();
       else video.pause();
